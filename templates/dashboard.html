@@ -1,0 +1,238 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrustVault - Dashboard</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #eef2f7;
+            color: #263238;
+        }
+
+        header {
+            background: #173b70;
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        header h1 {
+            margin: 0;
+        }
+
+        .container {
+            max-width: 950px;
+            margin: 30px auto;
+            padding: 0 16px;
+        }
+
+        .card {
+            background: white;
+            padding: 24px;
+            margin-bottom: 22px;
+            border-radius: 10px;
+            box-shadow: 0 3px 12px #00000010;
+        }
+
+        .card h2 {
+            color: #173b70;
+            margin-top: 0;
+        }
+
+        .role {
+            display: inline-block;
+            background: #e2ecfb;
+            color: #173b70;
+            padding: 6px 10px;
+            border-radius: 5px;
+        }
+
+        .button {
+            display: inline-block;
+            background: #2056a1;
+            color: white;
+            padding: 10px 14px;
+            margin: 6px 6px 6px 0;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .button:hover {
+            background: #123d79;
+        }
+
+        .logout {
+            background: #555555;
+        }
+
+        .logout:hover {
+            background: #333333;
+        }
+
+        .document-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .document-list li {
+            padding: 15px 0;
+            border-bottom: 1px solid #e0e0e0;
+            overflow-wrap: anywhere;
+        }
+
+        .document-list li:last-child {
+            border-bottom: none;
+        }
+
+        .empty-message {
+            color: #687782;
+        }
+
+        footer {
+            text-align: center;
+            color: #687782;
+            padding: 20px;
+        }
+
+        @media (max-width: 600px) {
+            header {
+                padding: 18px;
+            }
+
+            .card {
+                padding: 18px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>TrustVault</h1>
+
+    <a class="button logout"
+       href="{{ url_for('logout') }}">
+        Logout
+    </a>
+</header>
+
+<main class="container">
+
+    <!-- User Information -->
+    <section class="card">
+        <h2>Dashboard</h2>
+
+        <p>Welcome, <strong>{{ username }}</strong>!</p>
+
+        <p>
+            Your role:
+            <span class="role">{{ role }}</span>
+        </p>
+
+        <p>
+            Manage your documents and control who can access them.
+        </p>
+
+        {% if role == "Administrator" %}
+            <a class="button"
+               href="{{ url_for('audit') }}">
+                View Audit Logs
+            </a>
+        {% endif %}
+    </section>
+
+    <!-- Document Management -->
+    <section class="card">
+        <h2>Document Management</h2>
+
+        <p>Upload and manage your documents securely.</p>
+
+        {% if role in ["Administrator", "Document Owner"] %}
+            <a class="button"
+               href="{{ url_for('upload_document') }}">
+                Upload Document
+            </a>
+        {% endif %}
+
+        <h3>My Documents</h3>
+
+        {% if documents %}
+            <ul class="document-list">
+                {% for doc in documents %}
+                    <li>
+                        <strong>{{ doc.original_name }}</strong>
+                        <br>
+
+                        <a class="button"
+                           href="{{ url_for('view_document', document_id=doc.id) }}">
+                            Download
+                        </a>
+
+                        {% if role in ["Administrator", "Document Owner"] %}
+                            <a class="button"
+                               href="{{ url_for('share_document', document_id=doc.id) }}">
+                                Manage Access
+                            </a>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="empty-message">
+                No documents uploaded yet.
+            </p>
+        {% endif %}
+    </section>
+
+    <!-- Shared Documents -->
+    <section class="card">
+        <h2>Documents Shared With Me</h2>
+
+        {% if shared_documents %}
+            <ul class="document-list">
+                {% for doc in shared_documents %}
+                    <li>
+                        <strong>{{ doc.original_name }}</strong>
+                        <br>
+
+                        <a class="button"
+                           href="{{ url_for('view_document', document_id=doc.id) }}">
+                            Download
+                        </a>
+
+                        <span class="role">
+                            {{ permissions_label if permissions_label else "Shared" }}
+                        </span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="empty-message">
+                No documents have been shared with you.
+            </p>
+        {% endif %}
+    </section>
+
+</main>
+
+<footer>
+    <p>TrustVault - Secure Document Management</p>
+</footer>
+
+</body>
+</html>

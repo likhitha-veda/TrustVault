@@ -1,0 +1,308 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrustVault - Audit Logs</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 30px;
+            font-family: Arial, sans-serif;
+            background: #f4f6f9;
+            color: #263238;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            color: #17365d;
+        }
+
+        .subtitle {
+            color: #667085;
+            margin: 0;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 11px 18px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+            color: white;
+            background: #17365d;
+        }
+
+        .button:hover {
+            background: #24548a;
+        }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 25px;
+        }
+
+        .summary-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .summary-card p {
+            margin: 0 0 10px;
+            color: #667085;
+        }
+
+        .summary-card h2 {
+            margin: 0;
+            font-size: 26px;
+            color: #17365d;
+        }
+
+        .table-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .table-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .table-heading h2 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .search-box {
+            width: 280px;
+            max-width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ccd2da;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 850px;
+        }
+
+        th, td {
+            padding: 13px 12px;
+            text-align: left;
+            border-bottom: 1px solid #e7eaf0;
+            font-size: 14px;
+            vertical-align: top;
+        }
+
+        th {
+            background: #eef2f7;
+            color: #344054;
+            font-weight: bold;
+        }
+
+        tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        .action {
+            display: inline-block;
+            padding: 5px 9px;
+            border-radius: 5px;
+            background: #e8eef7;
+            color: #17365d;
+            font-size: 12px;
+            font-weight: bold;
+            overflow-wrap: anywhere;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 35px 15px;
+            color: #667085;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 25px;
+            color: #667085;
+            font-size: 13px;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 15px;
+            }
+
+            .header {
+                align-items: flex-start;
+            }
+
+            .search-box {
+                width: 100%;
+            }
+
+            .table-card {
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+
+        <header class="header">
+            <div>
+                <h1>TrustVault Audit Logs</h1>
+                <p class="subtitle">
+                    Administrator activity and document access history
+                </p>
+            </div>
+
+            <a href="{{ url_for('dashboard') }}" class="button">
+                Back to Dashboard
+            </a>
+        </header>
+
+        <section class="summary">
+            <div class="summary-card">
+                <p>Total Events</p>
+                <h2>{{ audit_logs|length }}</h2>
+            </div>
+
+            <div class="summary-card">
+                <p>Successful Logins</p>
+                <h2>{{ audit_logs|selectattr('action', 'equalto', 'LOGIN')|list|length }}</h2>
+            </div>
+
+            <div class="summary-card">
+                <p>Document Uploads</p>
+                <h2>{{ audit_logs|selectattr('action', 'equalto', 'UPLOAD')|list|length }}</h2>
+            </div>
+
+            <div class="summary-card">
+                <p>Denied Attempts</p>
+                <h2>{{ audit_logs|selectattr('action', 'equalto', 'ACCESS_DENIED')|list|length }}</h2>
+            </div>
+        </section>
+
+        <section class="table-card">
+            <div class="table-heading">
+                <h2>Activity History</h2>
+
+                <input
+                    type="search"
+                    id="searchInput"
+                    class="search-box"
+                    placeholder="Search logs..."
+                    aria-label="Search audit logs"
+                >
+            </div>
+
+            <div class="table-wrapper">
+                <table id="auditTable">
+                    <thead>
+                        <tr>
+                            <th>Timestamp (UTC)</th>
+                            <th>Username</th>
+                            <th>Action</th>
+                            <th>Document ID</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for item in audit_logs %}
+                        <tr>
+                            <td>{{ item['timestamp'] }}</td>
+                            <td>{{ item['username'] }}</td>
+                            <td>
+                                <span class="action">
+                                    {{ item['action'] }}
+                                </span>
+                            </td>
+                            <td>{{ item['document_id'] or '-' }}</td>
+                            <td>{{ item['details'] or '-' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="empty">
+                                No audit events recorded yet.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <p id="noResults" class="empty" hidden>
+                No matching audit events found.
+            </p>
+        </section>
+
+        <footer class="footer">
+            TrustVault &copy; 2026 | Audit and Activity Monitoring
+        </footer>
+
+    </div>
+
+    <script>
+        const searchInput = document.getElementById("searchInput");
+        const table = document.getElementById("auditTable");
+        const rows = table.querySelectorAll("tbody tr");
+        const noResults = document.getElementById("noResults");
+
+        searchInput.addEventListener("input", function () {
+            const query = this.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            rows.forEach(function (row) {
+                const matches = row.innerText.toLowerCase().includes(query);
+                row.hidden = !matches;
+
+                if (matches) {
+                    visibleCount++;
+                }
+            });
+
+            noResults.hidden = visibleCount !== 0;
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrustVault - Share Document</title>
+</head>
+<body>
+    <h1>Manage Document Access</h1>
+
+    <h3>Document: {{ doc.original_name }}</h3>
+
+    {% if message %}
+        <p>{{ message }}</p>
+    {% endif %}
+
+    <form method="POST">
+        <label for="target_user">Choose user:</label>
+        <select id="target_user" name="target_user" required>
+            {% for name in users %}
+                {% if name != doc.owner %}
+                    <option value="{{ name }}">{{ name }}</option>
+                {% endif %}
+            {% endfor %}
+        </select>
+
+        <br><br>
+
+        <label for="access">Permission:</label>
+        <select id="access" name="access" required>
+            <option value="read">Read</option>
+            <option value="edit">Edit</option>
+            <option value="revoke">Revoke access</option>
+        </select>
+
+        <br><br>
+        <button type="submit">Update Permission</button>
+    </form>
+
+    <h3>Current Permissions</h3>
+
+    {% if current_permissions %}
+        <ul>
+            {% for name, access in current_permissions.items() %}
+                <li>{{ name }}: {{ access }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No users have access yet.</p>
+    {% endif %}
+
+    <p><a href="{{ url_for('dashboard') }}">Back to Dashboard</a></p>
+</body>
+</html>
