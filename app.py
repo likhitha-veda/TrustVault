@@ -27,7 +27,7 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
-app.secret_key = os.environ.get(
+app.config["SECRET_KEY"] = os.environ.get(
     "TRUSTVAULT_SECRET_KEY",
     "local-development-key-change-before-deployment",
 )
@@ -114,7 +114,7 @@ def init_db():
             );
         """)
 
-        # Demo accounts are created only if they do not exist.
+        # Demo accounts for local testing.
         demo_users = [
             ("admin", "Admin123", "Administrator"),
             ("owner", "Owner123", "Document Owner"),
@@ -146,10 +146,7 @@ def init_db():
 # --------------------------------------------------
 
 def log_action(action, document_id="", details=""):
-    """
-    Store audit events using a separate, short-lived connection.
-    Call this after the main operation's transaction has finished.
-    """
+    """Record an audit event in the database."""
     username = session.get("username", "Unknown")
     timestamp = datetime.now(timezone.utc).strftime(
         "%Y-%m-%d %H:%M:%S UTC"
@@ -255,7 +252,6 @@ def home():
             session["role"] = user["role"]
 
             log_action("LOGIN", details="Successful login")
-
             return redirect(url_for("dashboard"))
 
         log_action(
@@ -405,7 +401,6 @@ def share_document(document_id):
             (doc["owner"],),
         ).fetchall()
 
-    # The dictionary format is compatible with the existing template.
     users = {
         row["username"]: {}
         for row in available_users
@@ -426,47 +421,46 @@ def share_document(document_id):
         elif target_user == session["username"]:
             message = "You cannot change your own access here."
 
-        else:
-            if access == "revoke":
-                with db_session() as db:
-                    result = db.execute(
-                        """
-                        DELETE FROM permissions
-                        WHERE document_id = ? AND username = ?
-                        """,
-                        (document_id, target_user),
-                    )
-                    removed = result.rowcount > 0
-
-                if removed:
-                    log_action(
-                        "ACCESS_REVOKED",
-                        document_id,
-                        f"Revoked access for {target_user}",
-                    )
-                    message = "Access revoked successfully."
-                else:
-                    message = "This user did not have access."
-
-            else:
-                with db_session() as db:
-                    db.execute(
-                        """
-                        INSERT INTO permissions
-                            (document_id, username, access)
-                        VALUES (?, ?, ?)
-                        ON CONFLICT(document_id, username)
-                        DO UPDATE SET access = excluded.access
-                        """,
-                        (document_id, target_user, access),
-                    )
-
-                log_action(
-                    "ACCESS_GRANTED",
-                    document_id,
-                    f"Granted {access} access to {target_user}",
+        elif access == "revoke":
+            with db_session() as db:
+                result = db.execute(
+                    """
+                    DELETE FROM permissions
+                    WHERE document_id = ? AND username = ?
+                    """,
+                    (document_id, target_user),
                 )
-                message = f"{access.title()} access granted."
+                removed = result.rowcount > 0
+
+            if removed:
+                log_action(
+                    "ACCESS_REVOKED",
+                    document_id,
+                    f"Revoked access for {target_user}",
+                )
+                message = "Access revoked successfully."
+            else:
+                message = "This user did not have access."
+
+        else:
+            with db_session() as db:
+                db.execute(
+                    """
+                    INSERT INTO permissions
+                        (document_id, username, access)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT(document_id, username)
+                    DO UPDATE SET access = excluded.access
+                    """,
+                    (document_id, target_user, access),
+                )
+
+            log_action(
+                "ACCESS_GRANTED",
+                document_id,
+                f"Granted {access} access to {target_user}",
+            )
+            message = f"{access.title()} access granted."
 
     with db_session() as db:
         current_rows = db.execute(
@@ -511,7 +505,6 @@ def view_document(document_id):
 
     permission = get_permission(document_id, username)
 
-    # Owners and users with explicit read/edit access may download.
     if (
         doc["owner"] != username
         and permission not in ("read", "edit")
